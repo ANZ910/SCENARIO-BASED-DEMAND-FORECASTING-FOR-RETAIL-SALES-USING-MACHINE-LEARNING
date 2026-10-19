@@ -1,4 +1,4 @@
+*.pkl
+_trained_model_cache/
 .venv/
 __pycache__/
-*.pyc
-.DS_Store
