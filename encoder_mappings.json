@@ -1,0 +1,25 @@
+{
+    "StateHoliday": {
+        "0": 0,
+        "a": 1,
+        "b": 2,
+        "c": 3
+    },
+    "StoreType": {
+        "a": 0,
+        "b": 1,
+        "c": 2,
+        "d": 3
+    },
+    "Assortment": {
+        "a": 0,
+        "b": 1,
+        "c": 2
+    },
+    "PromoInterval": {
+        "Feb,May,Aug,Nov": 0,
+        "Jan,Apr,Jul,Oct": 1,
+        "Mar,Jun,Sept,Dec": 2,
+        "None": 3
+    }
+}

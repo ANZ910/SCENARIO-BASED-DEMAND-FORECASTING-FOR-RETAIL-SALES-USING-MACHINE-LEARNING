@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Demand Forecasting Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+</head>
+<body>
+<div class="page">
+
+    <header class="page-header">
+        <h1>Scenario-Based Demand Forecasting for Retail Sales</h1>
+        <p class="subtitle">Retail Sales Forecasting System</p>
+    </header>
+
+    <main class="stack">
+
+        <!-- Container 1: scenario inputs -->
+        <section class="panel" id="input-panel">
+            <h2>Scenario Settings</h2>
+
+            <div class="form-grid">
+
+                <div class="field">
+                    <label for="forecast-period">Forecast Period</label>
+                    <select id="forecast-period">
+                        <option value="7">7 Days</option>
+                        <option value="14">14 Days</option>
+                        <option value="30">30 Days</option>
+                    </select>
+                </div>
+
+                <label class="toggle-row">
+                    <span class="toggle-label">Promo</span>
+                    <span class="switch">
+                        <input type="checkbox" id="promo">
+                        <span class="track"></span>
+                    </span>
+                </label>
+
+                <label class="toggle-row">
+                    <span class="toggle-label">Continuous campaign</span>
+                    <span class="switch">
+                        <input type="checkbox" id="promo2">
+                        <span class="track"></span>
+                    </span>
+                </label>
+
+                <div class="field">
+                    <label for="state-holiday">State Holiday</label>
+                    <select id="state-holiday">
+                        <option value="None">None</option>
+                        <option value="Public Holiday">Public Holiday</option>
+                        <option value="Easter">Easter</option>
+                        <option value="Christmas">Christmas</option>
+                    </select>
+                </div>
+
+                <label class="toggle-row">
+                    <span class="toggle-label">School Holiday</span>
+                    <span class="switch">
+                        <input type="checkbox" id="school-holiday">
+                        <span class="track"></span>
+                    </span>
+                </label>
+
+                <div class="field">
+                    <div class="slider-header">
+                        <label for="competition-distance">Competition Distance</label>
+                        <span class="slider-value"><span id="distance-value">2300</span> m</span>
+                    </div>
+                    <input type="range" id="competition-distance"
+                           min="0" max="20000" step="100" value="2300">
+                </div>
+
+            </div>
+
+            <button id="forecast-button" class="primary-button">Generate Forecast</button>
+            <p id="error-message" class="error"></p>
+        </section>
+
+        <!-- Container 2: summary cards -->
+        <section class="panel" id="forecast-results">
+            <h2>Forecast Summary</h2>
+            <div class="cards">
+                <div class="card">
+                    <h3>Total Predicted Sales</h3>
+                    <p id="total-sales">-</p>
+                </div>
+                <div class="card">
+                    <h3>Average Daily Sales</h3>
+                    <p id="average-sales">-</p>
+                </div>
+                <div class="card">
+                    <h3>Peak Day</h3>
+                    <p id="peak-day">-</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Container 3: charts -->
+        <section class="panel" id="chart-section">
+            <h2>Sales Forecast Charts</h2>
+            <div class="charts">
+                <div class="chart-block">
+                    <h3>Daily Forecast</h3>
+                    <div id="forecast-chart" class="chart"></div>
+                </div>
+                <div class="chart-block">
+                    <h3>Scenario vs Baseline</h3>
+                    <div id="comparison-chart" class="chart"></div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+</div>
+
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
