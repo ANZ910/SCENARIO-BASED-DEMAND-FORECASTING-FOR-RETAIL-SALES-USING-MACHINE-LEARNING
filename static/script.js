@@ -4,8 +4,8 @@
 // then draws both charts and fills in the summary cards.
 
 // Colours used by the charts 
-const SCENARIO_COLOR = "#3b82f6";
-const BASELINE_COLOR = "#64748b";
+const SCENARIO_COLOR = "#2e27b7";
+const BASELINE_COLOR = "#42474d";
 
 // Grab the elements we need (by the ids in index.html)
 const periodSelect   = document.getElementById("forecast-period");
@@ -161,6 +161,8 @@ async function runForecast() {
     }
 
     showSummary(result.summary);
+    showUplift(result);   
+    showInsights(result); 
     drawDailyChart(result);
     drawComparisonChart(result);
   } catch (err) {
@@ -169,6 +171,62 @@ async function runForecast() {
     button.disabled = false;
     button.textContent = "Generate Forecast";
   }
+}
+
+function showUplift(result) {
+  const base = sumSales(result.baseline);
+  const scen = sumSales(result.scenario);
+  const pct = base === 0 ? 0 : ((scen - base) / base) * 100;
+  const el = document.getElementById("uplift");
+  el.textContent = `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}%`;
+  el.className = pct >= 0 ? "positive" : "negative";
+}
+
+function showInsights(result) {
+  const scen = result.scenario;
+  const base = result.baseline;
+  const fmt  = v => Math.round(v).toLocaleString("en-US");
+  const weekday = dateStr => new Date(dateStr + "T00:00:00")
+    .toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "short" });
+
+  const sales = scen.map(d => d.predicted_sales);
+  const peakIdx = sales.indexOf(Math.max(...sales));
+  const lowIdx  = sales.indexOf(Math.min(...sales));
+
+  const items = [];
+
+  items.push(`Sales are forecast to peak on <b>${weekday(scen[peakIdx].date)}</b> (Day ${peakIdx + 1}) at about ${fmt(sales[peakIdx])}.`);
+  items.push(`The weakest day is <b>${weekday(scen[lowIdx].date)}</b> (Day ${lowIdx + 1}) at about ${fmt(sales[lowIdx])}.`);
+
+  // Scenario vs baseline
+  const scenTotal = sumSales(scen);
+  const baseTotal = sumSales(base);
+  const diff = scenTotal - baseTotal;
+  const pct  = baseTotal === 0 ? 0 : (diff / baseTotal) * 100;
+  if (Math.abs(pct) < 0.5) {
+    items.push("The selected scenario gives <b>about the same</b> total sales as normal conditions.");
+  } else if (diff > 0) {
+    items.push(`The selected scenario is forecast to <b>increase</b> total sales by ${fmt(diff)} (${pct.toFixed(1)}%) compared with normal conditions.`);
+  } else {
+    items.push(`The selected scenario is forecast to <b>reduce</b> total sales by ${fmt(-diff)} (${Math.abs(pct).toFixed(1)}%) compared with normal conditions.`);
+  }
+
+  // Strongest weekday on average (only meaningful with 2+ weeks)
+  if (scen.length >= 14) {
+    const totals = {}, counts = {};
+    scen.forEach(d => {
+      const name = new Date(d.date + "T00:00:00").toLocaleDateString("en-GB", { weekday: "long" });
+      totals[name] = (totals[name] || 0) + d.predicted_sales;
+      counts[name] = (counts[name] || 0) + 1;
+    });
+    const best = Object.keys(totals).reduce((a, b) =>
+      totals[a] / counts[a] >= totals[b] / counts[b] ? a : b);
+    items.push(`On average, <b>${best}</b> is the strongest day of the week in this period.`);
+  }
+
+  document.getElementById("insights-list").innerHTML =
+    items.map(t => `<li>${t}</li>`).join("");
+  document.getElementById("insights").hidden = false;
 }
 
 button.addEventListener("click", runForecast);

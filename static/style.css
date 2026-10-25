@@ -1,13 +1,15 @@
 :root {
   /* Colours */
-  --bg:            #eef4fb;   /* page background */
+  --bg:            #f1f5f9;
+  --accent:        #4f46e5;   
+  --accent-dark:   #4338ca;
+  --header-from:   #1e1b4b;   /* new: banner gradient */
+  --header-to:     #4338ca;
   --surface:       #ffffff;   /* big containers */
   --tile:          #f8fafc;   /* small boxes inside containers */
   --text:          #111827;
   --text-muted:    #6b7280;
   --border:        #d9e0ea;
-  --accent:        #3b82f6;
-  --accent-dark:   #2563eb;
   --error:         #dc2626;
 
   /* Shape and type */
@@ -22,7 +24,8 @@
 
 body {
   margin: 0;
-  background: var(--bg);
+  background: linear-gradient(180deg, #606c94 0%, #f1f5f9 60%);
+  background-attachment: fixed;
   color: var(--text);
   font-family: var(--font);
   font-size: 15px;
@@ -35,6 +38,15 @@ body {
 }
 
 /* ---------- Header ---------- */
+.page-header {
+  background: linear-gradient(135deg, var(--header-from), var(--header-to));
+  color: #fff;
+  padding: 28px 32px;
+  margin-bottom: 24px;
+  border-radius: var(--radius);
+  box-shadow: 0 8px 24px rgba(67, 56, 202, 0.25);
+}
+
 .page-header h1 {
   margin: 0;
   font-size: 1.5rem;
@@ -43,8 +55,8 @@ body {
 }
 
 .subtitle {
-  margin: 6px 0 24px;
-  color: var(--text-muted);
+  margin: 6px 0 0;
+  color: rgba(255, 255, 255, 0.75);
 }
 
 /* ---------- Stack of separate containers ---------- */
@@ -61,6 +73,19 @@ body {
   padding: 24px;
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
 }
+
+/* Small accent bar before each section title */
+.panel h2::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 1.1em;
+  margin-right: 10px;
+  background: var(--accent);
+  border-radius: 3px;
+  vertical-align: -0.15em;
+}
+
 
 .panel h2 {
   margin: 0 0 20px;
@@ -107,7 +132,8 @@ select:focus-visible,
   align-items: center;
   justify-content: space-between;
   padding: 12px 14px;
-  background: var(--tile);
+  background: #eef2ff;
+  border-color: var(--accent);
   border: 1px solid var(--border);
   border-radius: var(--radius-small);
   font-weight: 500;
@@ -191,7 +217,8 @@ input[type="range"] {
   font: inherit;
   font-weight: 600;
   color: #fff;
-  background: var(--accent);
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.35);
   border: none;
   border-radius: var(--radius-small);
   cursor: pointer;
@@ -218,15 +245,33 @@ input[type="range"] {
 /* ---------- Summary cards ---------- */
 .cards {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 16px;
 }
 
+/* Summary cards: coloured left edge, a different colour for each */
 .card {
-  padding: 16px 18px;
-  background: var(--tile);
+  padding: 14px 18px;          /* space between the bar and the text */
+  background: var(--tile);     /* matches the chart blocks */
   border: 1px solid var(--border);
+  border-left: 4px solid var(--accent);
   border-radius: var(--radius-small);
+  transition: transform 0.2s, box-shadow 0.2s;
+  border-left: 4px solid var(--accent);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.card:nth-child(2) { border-left-color: #0d9488; }
+.card:nth-child(3) { border-left-color: #f59e0b; }
+.card:nth-child(4) { border-left-color: #e11d48; } 
+
+.card:hover,
+.chart-block:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
+}
+
+.chart-block {
+  transition: transform 0.2s, box-shadow 0.2s;
 }
 
 .card h3 {
@@ -240,6 +285,8 @@ input[type="range"] {
   margin: 0;
   font-size: 1.3rem;
   font-weight: 600;
+  .positive { color: #0d9488; }
+  .negative { color: #dc2626; }
 }
 
 /* ---------- Charts: two boxes side by side ---------- */
@@ -293,3 +340,16 @@ input[type="range"] {
     grid-template-columns: 1fr;
   }
 }
+
+.insights {
+  margin-top: 16px;
+  padding: 16px 20px;
+  background: var(--tile);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--accent);
+  border-left-color: #00bddb;
+  border-radius: var(--radius-small);
+}
+.insights[hidden] { display: none; }
+.insights h3 { margin: 0 0 8px; font-size: 1rem; }
+.insights ul { margin: 0; padding-left: 20px; line-height: 1.7; }
