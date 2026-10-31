@@ -32,13 +32,19 @@ def validate_inputs(data):
     if isinstance(distance, bool) or not isinstance(distance, (int, float)) or distance<0:
         return None, "competition_distance must be a number that is 0 or more"
 
+    store_type = data.get("store_type")
+    if not isinstance(store_type, str) or store_type not in predict.STORE_TYPE_OPTIONS:
+        options = ", ".join(predict.STORE_TYPE_OPTIONS)
+        return None, f"store_type must be one of: {options}."
+
     cleaned = {
         "forecast_period_days": int(period),
         "promo": int(data["promo"]),
         "promo2": int(data["promo2"]),
         "state_holiday_label": label,
         "school_holiday": int(data["school_holiday"]),
-        "competition_distance": float(distance)
+        "competition_distance": float(distance),
+        "store_type": store_type
     }
     return cleaned, None
 

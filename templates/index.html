@@ -9,20 +9,20 @@
 </head>
 <body>
 <div class="page">
-
+ 
     <header class="page-header">
         <h1>Scenario-Based Demand Forecasting for Retail Sales</h1>
         <p class="subtitle">Retail Sales Forecasting System</p>
     </header>
-
+ 
     <main class="stack">
-
+ 
         <!-- Container 1: scenario inputs -->
         <section class="panel" id="input-panel">
             <h2>Scenario Settings</h2>
-
+ 
             <div class="form-grid">
-
+ 
                 <div class="field">
                     <label for="forecast-period">Forecast Period</label>
                     <select id="forecast-period">
@@ -31,7 +31,7 @@
                         <option value="30">30 Days</option>
                     </select>
                 </div>
-
+ 
                 <label class="toggle-row">
                     <span class="toggle-label">Promo</span>
                     <span class="switch">
@@ -39,7 +39,7 @@
                         <span class="track"></span>
                     </span>
                 </label>
-
+ 
                 <label class="toggle-row">
                     <span class="toggle-label">Continuous campaign</span>
                     <span class="switch">
@@ -47,7 +47,7 @@
                         <span class="track"></span>
                     </span>
                 </label>
-
+ 
                 <div class="field">
                     <label for="state-holiday">State Holiday</label>
                     <select id="state-holiday">
@@ -57,7 +57,17 @@
                         <option value="Christmas">Christmas</option>
                     </select>
                 </div>
-
+ 
+                <div class="field">
+                    <label for="store-type">Store Type</label>
+                    <select id="store-type">
+                        <option value="a" selected>Type A (standard)</option>
+                        <option value="b">Type B (high-traffic, few stores)</option>
+                        <option value="c">Type C (closed Sundays)</option>
+                        <option value="d">Type D (fewer customers, higher spend)</option>
+                    </select>
+                </div>
+ 
                 <label class="toggle-row">
                     <span class="toggle-label">School Holiday</span>
                     <span class="switch">
@@ -65,7 +75,7 @@
                         <span class="track"></span>
                     </span>
                 </label>
-
+ 
                 <div class="field">
                     <div class="slider-header">
                         <label for="competition-distance">Competition Distance</label>
@@ -74,13 +84,19 @@
                     <input type="range" id="competition-distance"
                            min="0" max="20000" step="100" value="2300">
                 </div>
-
+ 
             </div>
-
+ 
+            <p class="form-note">
+                Store Type: choose the store model that matches your store. If you are
+                unsure, keep Type A. Type B has few stores in the training data, so its
+                forecast is less reliable.
+            </p>
+ 
             <button id="forecast-button" class="primary-button">Generate Forecast</button>
             <p id="error-message" class="error"></p>
         </section>
-
+ 
         <!-- Container 2: summary cards -->
         <section class="panel" id="forecast-results">
             <h2>Forecast Summary</h2>
@@ -103,7 +119,7 @@
                 </div>
             </div>
         </section>
-
+ 
         <!-- Container 3: charts -->
         <section class="panel" id="chart-section">
             <h2>Sales Forecast Charts</h2>
@@ -122,10 +138,10 @@
                 <ul id="insights-list"></ul>
             </div>
         </section>
-
+ 
     </main>
 </div>
-
+ 
 <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>
