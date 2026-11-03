@@ -343,9 +343,9 @@ def _generate_track(
         history.pop(0)
 
     return results
+
  
 # Public API - called by application.py
- 
 # Return {"scenario", "baseline", "summary"}; baseline has no promos or holidays.
 def generate_forecast(
     forecast_period_days,

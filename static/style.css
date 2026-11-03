@@ -331,7 +331,7 @@ input[type="range"] {
   border: 1px dashed var(--border);
   border-radius: var(--radius-small);
 }
- 
+ wasa
 .chart:empty::before {
   content: "Run a forecast to see the chart";
 }
