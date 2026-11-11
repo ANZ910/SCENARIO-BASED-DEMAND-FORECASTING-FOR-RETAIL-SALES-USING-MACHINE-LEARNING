@@ -24,7 +24,7 @@
 
 body {
   margin: 0;
-  background: linear-gradient(180deg, #ffffff 0%, #3f5f80 60%);
+  background: linear-gradient(180deg, #a8b8e1 15%, #47719b 60%);
   background-attachment: fixed;
   color: var(--text);
   font-family: var(--font);
@@ -39,12 +39,12 @@ body {
 
 /* ---------- Header ---------- */
 .page-header {
-  background: linear-gradient(135deg, var(--header-from), var(--header-to));
+  background: #1e355b;
   color: #fff;
   padding: 28px 32px;
   margin-bottom: 24px;
   border-radius: var(--radius);
-  box-shadow: 0 8px 24px rgba(67, 56, 202, 0.25);
+  box-shadow: 0 8px 24px rgba(90, 80, 197, 0.25);
 }
 
 .page-header h1 {

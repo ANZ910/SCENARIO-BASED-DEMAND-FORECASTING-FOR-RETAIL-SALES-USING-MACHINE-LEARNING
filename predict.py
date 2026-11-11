@@ -6,23 +6,18 @@ import json
 import os
 import pickle
 from datetime import datetime, timedelta
-
 import numpy as np
 import pandas as pd
 from xgboost import XGBRegressor
 
 # Paths
-
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 CLEANED_DATA_PATH = os.path.join(_THIS_DIR, "cleaned_rossmann.json")
 ENCODER_MAPPINGS_PATH = os.path.join(_THIS_DIR, "encoder_mappings.json")
 
-# Local training cache. This is NOT a notebook-exported artifact - predict.py
-# creates and manages this file itself, purely to avoid retraining (which
-# takes several minutes) on every single run during development. If this
-# file is deleted, or cleaned_rossmann.json is newer than it, the model is
-# retrained automatically with the exact same hyperparameters as below, so
-# the model's accuracy is unaffected either way.
+# Local training cache, created by predict.py (not by the notebook) to skip
+# retraining on every run. If it is missing or older than cleaned_rossmann.json,
+# the model is retrained with the same hyperparameters below.
 MODEL_CACHE_PATH = os.path.join(_THIS_DIR, "_trained_model_cache.pkl")
 
 
@@ -47,15 +42,11 @@ XGB_PARAMS = dict(
 PROMO_DURATION_DEFAULT = 108
 COMPETITION_DURATION_DEFAULT = 61
 
-# Seed values for recursive lag/rolling forecasting. Because the deployed
-# model is store-agnostic (Store ID is dropped, per FYP1 report Section 3.5)
-# and the dashboard has no store selector, there is no single store's
-# history to seed from. These are all-time aggregate statistics computed
-# once from cleaned_rossmann.json, matching the "generalized demand
-# forecasts" framing already documented in the FYP1 report. Kept as fixed
-# constants (not recomputed at runtime) since cleaned_rossmann.json has no
-# Date column to identify "recent" days, and the report already documents
-# an all-time-aggregate approach.
+# Seed values for the recursive lag/rolling features. The model is
+# store-agnostic (FYP1 report Section 3.5), so there is no single store's
+# history to start from. These are all-time averages from
+# cleaned_rossmann.json, fixed here because it has no Date column to find
+# "recent" days.
 SEED_SALES_LAG_7 = 6949.19
 SEED_SALES_LAG_14 = 6955.01
 SEED_SALES_LAG_30 = 6945.27
@@ -109,10 +100,8 @@ FEATURE_ORDER = [
 DEFAULT_ASSORTMENT = "a"
 DEFAULT_PROMO_INTERVAL = "None"
 
-# Encoder mappings (loaded once from the notebook's exported artifact)
-
+# Encoder mappings (loaded once from the notebook's)
 _encoder_mappings = None
-
 
 # Load encoder_mappings.json once and cache it.
 def _load_encoder_mappings():
@@ -139,10 +128,6 @@ def _encode(column, raw_value):
             f"column {column!r}. Known values: {list(column_mapping.keys())}"
         )
     return int(column_mapping[raw_value])
-
-
-# Model training (from cleaned_rossmann.json only - no raw data, no notebook
-# code dependency)
 
 # Load cleaned_rossmann.json.
 def _load_cleaned_data():
@@ -286,7 +271,6 @@ def _is_closed(store_type, date):
 
 
 # Recursive multi-day forecast (scenario or baseline track)
-
 # Forecast num_days recursively, feeding each prediction into the next day's lags.
 # promo_dates is a set of datetime.date objects: Promo is 1 on those real
 # dates and 0 on every other day. Promo on a closed day has no effect.
@@ -422,7 +406,6 @@ def generate_forecast(
         "baseline": baseline,
         "summary": summary,
     }
-
 
 # Train or load the model at startup so the first request is fast.
 def warm_up():
