@@ -1,0 +1,70 @@
+/* Extra styles for the store picker, sales upload and the history / accuracy
+   section. Loaded after style.css and uses its colour variables. */
+
+.hint {
+  margin: 6px 0 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+input[type="number"] {
+  width: 100%;
+  padding: 12px 14px;
+  font: inherit;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-small);
+}
+
+input[type="number"]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.store-info {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 10px 14px;
+  font-size: 0.9rem;
+  background: var(--tile);
+  border: 1px solid var(--border);
+  border-left: 4px solid #0d9488;
+  border-radius: var(--radius-small);
+}
+.store-info[hidden],
+#replay-row[hidden],
+#average-field[hidden],
+.badge[hidden],
+#accuracy-cards[hidden],
+#accuracy-note[hidden] { display: none; }
+
+/* Controls the replay switch takes over (promo, holiday, school) or that the
+   chosen store decides (type, competition distance) */
+.locked {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.chart.tall { min-height: 460px; }
+
+#history-section .chart-block { margin-top: 12px; }
+
+.badge {
+  margin: 16px 0 0;
+  padding: 10px 14px;
+  font-size: 0.9rem;
+  border-radius: var(--radius-small);
+  border: 1px solid var(--border);
+}
+.badge.ok   { background: #ecfdf5; border-color: #10b981; color: #065f46; }
+.badge.warn { background: #fffbeb; border-color: #f59e0b; color: #92400e; }
+
+#accuracy-cards { margin-top: 16px; }
+#accuracy-note { margin-top: 12px; }

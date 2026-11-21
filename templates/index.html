@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Demand Forecasting Dashboard</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='store_backtest.css') }}">
     <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
 </head>
 <body>
@@ -22,6 +23,33 @@
             <h2>Scenario Settings</h2>
 
             <div class="form-grid">
+
+                <!-- Sales input: a real store's history, or the user's own sales file -->
+                <div class="field">
+                    <label for="store-select">Store (sales history)</label>
+                    <select id="store-select">
+                        <option value="">Generic store (no sales history)</option>
+                    </select>
+                </div>
+
+                <div class="field" id="average-field">
+                    <label for="avg-7">Or type your recent sales (average per day)</label>
+                    <div class="pair">
+                        <input type="number" id="avg-7" min="1" step="1" placeholder="Last 7 days">
+                        <input type="number" id="avg-30" min="1" step="1" placeholder="Last 30 days">
+                    </div>
+                    <p class="hint">Either one is enough. The forecast starts from this sales level.</p>
+                </div>
+
+                <p class="store-info" id="store-info" hidden></p>
+
+                <label class="toggle-row" id="replay-row" hidden>
+                    <span class="toggle-label">Test accuracy: use the real promos and holidays of this period (Promo, Holiday and School Holiday are then locked)</span>
+                    <span class="switch">
+                        <input type="checkbox" id="replay">
+                        <span class="track"></span>
+                    </span>
+                </label>
 
                 <div class="field">
                     <label for="forecast-period">Forecast Period</label>
@@ -66,10 +94,10 @@
                 <div class="field">
                     <label for="store-type">Store Type</label>
                     <select id="store-type">
-                        <option value="a" selected>Type A (standard)</option>
-                        <option value="b">Type B (high-traffic, few stores)</option>
+                        <option value="a" selected>Type A (standard, closed Sundays)</option>
+                        <option value="b">Type B (high-traffic, open Sundays)</option>
                         <option value="c">Type C (closed Sundays)</option>
-                        <option value="d">Type D (fewer customers, higher spend)</option>
+                        <option value="d">Type D (fewer customers, higher spend, closed Sundays)</option>
                     </select>
                 </div>
 
@@ -87,7 +115,7 @@
                         <span class="slider-value"><span id="distance-value">2300</span> m</span>
                     </div>
                     <input type="range" id="competition-distance"
-                           min="0" max="20000" step="100" value="2300">
+                           min="0" max="80000" step="100" value="2300">
                 </div>
 
                 <!-- Promo days: only shown while Promo is ON -->
@@ -109,10 +137,12 @@
 
             </div>
 
-            <p class="form-note">
+            <p class="form-note" id="form-note">
                 Store Type: choose the store model that matches your store. If you are
-                unsure, keep Type A. Type B has few stores in the training data, so its
-                forecast is less reliable.
+                unsure, keep Type A. Almost every store is closed on Sundays except
+                Type B. Type B has few stores in the training data, so its forecast
+                is less reliable. Choosing a store above fills in its real type,
+                competition distance and campaign settings.
             </p>
 
             <button id="forecast-button" class="primary-button">Generate Forecast</button>
@@ -142,7 +172,36 @@
             </div>
         </section>
 
-        <!-- Container 3: charts -->
+        <!-- Container 3: past sales + forecast on one chart, and the accuracy check -->
+        <section class="panel" id="history-section">
+            <h2>Sales History and Forecast</h2>
+            <p class="hint" id="history-note">Choose a store, or type your recent average sales, to see past sales together with the forecast.</p>
+            <div class="chart-block">
+                <div id="history-chart" class="chart tall"></div>
+            </div>
+            <p class="badge" id="accuracy-badge" hidden></p>
+            <div class="cards" id="accuracy-cards" hidden>
+                <div class="card">
+                    <h3>Model error (MAPE)</h3>
+                    <p id="acc-mape">-</p>
+                </div>
+                <div class="card">
+                    <h3>Naive error: last week repeated</h3>
+                    <p id="acc-naive">-</p>
+                </div>
+                <div class="card">
+                    <h3>Average miss per day (MAE)</h3>
+                    <p id="acc-mae">-</p>
+                </div>
+                <div class="card">
+                    <h3>Total sales error</h3>
+                    <p id="acc-total">-</p>
+                </div>
+            </div>
+            <p class="hint" id="accuracy-note" hidden></p>
+        </section>
+
+        <!-- Container 4: charts -->
         <section class="panel" id="chart-section">
             <h2>Sales Forecast Charts</h2>
             <div class="charts">
