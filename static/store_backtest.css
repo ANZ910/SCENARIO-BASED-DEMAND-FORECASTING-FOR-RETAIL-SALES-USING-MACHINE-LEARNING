@@ -68,3 +68,17 @@ input[type="number"]:focus-visible {
 
 #accuracy-cards { margin-top: 16px; }
 #accuracy-note { margin-top: 12px; }
+
+/* Short statement of what the tool is (and is not) for */
+.scope-note {
+  margin: -6px 0 18px;
+  padding: 10px 14px;
+  font-size: 0.88rem;
+  color: #1e3a8a;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-left: 4px solid #3b82f6;
+  border-radius: var(--radius-small);
+}
+
+.promo-days .hint { margin-top: 8px; }

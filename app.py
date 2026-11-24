@@ -50,6 +50,29 @@ def parse_average(data, name):
     return float(value), None
 
 
+def parse_day_list(data, name, start_date, period):
+    """A list of dates inside the forecast window (promo days, holiday days).
+    Return (sorted list of dates, None) or (None, error_message)."""
+    raw_list = data.get(name, [])
+    if not isinstance(raw_list, list) or len(raw_list) > period:
+        return None, f"{name} must be a list of at most {period} dates"
+
+    days = set()
+    for raw in raw_list:
+        parsed = parse_iso_date(raw)
+        if parsed is None:
+            return None, f"{name} must contain dates written as YYYY-MM-DD"
+        days.add(parsed)
+
+    if days:
+        if start_date is None:
+            return None, f"start_date is required when {name} is given"
+        last_day = start_date + timedelta(days=period - 1)
+        if any(d < start_date or d > last_day for d in days):
+            return None, f"every date in {name} must fall inside the forecast period"
+    return sorted(days), None
+
+
 def validate_inputs(data):
     """Return (cleaned_inputs, None) if valid, else (None, error_message) if not"""
 
@@ -60,9 +83,8 @@ def validate_inputs(data):
     if period not in [7, 14, 30]:
         return None, "forecast_period_days must be 7, 14, or 30"
 
-    for name in ("promo2", "school_holiday"):
-        if data.get(name) not in (0, 1):
-            return None, f"{name} must be 0 or 1"
+    if data.get("promo2") not in (0, 1):
+        return None, "promo2 must be 0 or 1"
 
     # start_date is optional: if it is missing, predict.py starts tomorrow
     start_date = None
@@ -71,29 +93,24 @@ def validate_inputs(data):
         if start_date is None:
             return None, "start_date must be a date written as YYYY-MM-DD"
 
-    # promo_dates: the real dates that get Promo = 1 (empty list = no promo)
-    raw_promo_dates = data.get("promo_dates", [])
-    if not isinstance(raw_promo_dates, list) or len(raw_promo_dates) > period:
-        return None, f"promo_dates must be a list of at most {period} dates"
-
-    promo_dates = []
-    for raw in raw_promo_dates:
-        parsed = parse_iso_date(raw)
-        if parsed is None:
-            return None, "promo_dates must contain dates written as YYYY-MM-DD"
-        promo_dates.append(parsed)
-
-    if promo_dates:
-        if start_date is None:
-            return None, "start_date is required when promo_dates is given"
-        last_day = start_date + timedelta(days=period - 1)
-        if any(d < start_date or d > last_day for d in promo_dates):
-            return None, "every promo date must fall inside the forecast period"
+    # The days the user marked: promo, state holiday, school holiday
+    # (each is a list of real dates; an empty list means none of those days)
+    promo_dates, error = parse_day_list(data, "promo_dates", start_date, period)
+    if error:
+        return None, error
+    state_holiday_dates, error = parse_day_list(data, "state_holiday_dates", start_date, period)
+    if error:
+        return None, error
+    school_holiday_dates, error = parse_day_list(data, "school_holiday_dates", start_date, period)
+    if error:
+        return None, error
 
     label = data.get("state_holiday_label")
     if not isinstance(label, str) or label not in predict.STATE_HOLIDAY_OPTIONS:
         options = ", ".join(predict.STATE_HOLIDAY_OPTIONS)
         return None, f"state_holiday_label must be one of: {options}."
+    if state_holiday_dates and label == "None":
+        return None, "choose a state holiday type when state_holiday_dates is given"
 
     # Optional: a real store (history + store facts) or the user's own recent averages
     store_id = data.get("store_id")
@@ -132,10 +149,11 @@ def validate_inputs(data):
     cleaned = {
         "forecast_period_days": int(period),
         "start_date": start_date,
-        "promo_dates": sorted(set(promo_dates)),
+        "promo_dates": promo_dates,
         "promo2": int(data["promo2"]),
         "state_holiday_label": label,
-        "school_holiday": int(data["school_holiday"]),
+        "state_holiday_dates": state_holiday_dates,
+        "school_holiday_dates": school_holiday_dates,
         "competition_distance": float(distance),
         "store_type": store_type,
         "store_id": store_id,

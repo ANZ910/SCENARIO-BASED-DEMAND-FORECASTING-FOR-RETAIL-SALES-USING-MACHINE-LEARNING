@@ -21,6 +21,12 @@
         <!-- Container 1: scenario inputs -->
         <section class="panel" id="input-panel">
             <h2>Scenario Settings</h2>
+            <p class="scope-note">
+                Built for the stores of one retail franchise (the Rossmann drugstore chain). It learned
+                this chain's store types, promotions and opening rules, so forecasts for other
+                retailers are not validated. Choose a store to use its own sales history: that is
+                where the forecast is most accurate.
+            </p>
 
             <div class="form-grid">
 
@@ -82,7 +88,7 @@
                 </label>
 
                 <div class="field">
-                    <label for="state-holiday">State Holiday</label>
+                    <label for="state-holiday">State Holiday (type)</label>
                     <select id="state-holiday">
                         <option value="None">None</option>
                         <option value="Public Holiday">Public Holiday</option>
@@ -94,10 +100,10 @@
                 <div class="field">
                     <label for="store-type">Store Type</label>
                     <select id="store-type">
-                        <option value="a" selected>Type A (standard, closed Sundays)</option>
+                        <option value="a" selected>Type A (most common, closed Sundays)</option>
                         <option value="b">Type B (high-traffic, open Sundays)</option>
-                        <option value="c">Type C (closed Sundays)</option>
-                        <option value="d">Type D (fewer customers, higher spend, closed Sundays)</option>
+                        <option value="c">Type C (like Type A, always closed Sundays)</option>
+                        <option value="d">Type D (fewer customers, higher spend each)</option>
                     </select>
                 </div>
 
@@ -130,9 +136,40 @@
                             <button type="button" class="preset-button" data-preset="clear">Clear</button>
                         </div>
                     </div>
-                    <div class="calendar" id="promo-calendar" role="group"
+                    <div class="calendar" role="group"
                          aria-label="Pick the dates that have promo"></div>
                     <p class="promo-count" id="promo-count" aria-live="polite"></p>
+                </div>
+
+                <!-- State holiday days: shown when a holiday type is chosen -->
+                <div class="promo-days" id="state-days" hidden>
+                    <div class="promo-days-header">
+                        <span class="promo-days-title">Which days are this state holiday?</span>
+                        <div class="presets" role="group" aria-label="State holiday day presets">
+                            <button type="button" class="preset-button" data-preset="first-day">First day</button>
+                            <button type="button" class="preset-button" data-preset="first-week">First week</button>
+                            <button type="button" class="preset-button" data-preset="every">Every day</button>
+                            <button type="button" class="preset-button" data-preset="clear">Clear</button>
+                        </div>
+                    </div>
+                    <div class="calendar" role="group" aria-label="Pick the state holiday dates"></div>
+                    <p class="promo-count" aria-live="polite"></p>
+                    <p class="hint">In the data most stores are closed on state holidays, so this forecasts a store that stays open.</p>
+                </div>
+
+                <!-- School holiday days: shown while School Holiday is ON -->
+                <div class="promo-days" id="school-days" hidden>
+                    <div class="promo-days-header">
+                        <span class="promo-days-title">School holiday days</span>
+                        <div class="presets" role="group" aria-label="School holiday day presets">
+                            <button type="button" class="preset-button" data-preset="every">Every day</button>
+                            <button type="button" class="preset-button" data-preset="weekdays">Weekdays</button>
+                            <button type="button" class="preset-button" data-preset="first-week">First week</button>
+                            <button type="button" class="preset-button" data-preset="clear">Clear</button>
+                        </div>
+                    </div>
+                    <div class="calendar" role="group" aria-label="Pick the school holiday dates"></div>
+                    <p class="promo-count" aria-live="polite"></p>
                 </div>
 
             </div>

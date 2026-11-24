@@ -5,16 +5,16 @@
 # Date column, so the model can be trained on the past and tested on the
 # future). Store history for the dashboard: history.json (also from
 # build_data.py). Categorical labels: encoder_mappings.json.
- 
+
 import json
 import os
 import pickle
 from datetime import date, datetime, timedelta
- 
+
 import numpy as np
 import pandas as pd
 from xgboost import XGBRegressor
- 
+
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
@@ -23,7 +23,7 @@ TRAINING_FRAME_PATH = os.path.join(_THIS_DIR, "training_frame.pkl")
 HISTORY_PATH = os.path.join(_THIS_DIR, "history.json")
 ENCODER_MAPPINGS_PATH = os.path.join(_THIS_DIR, "encoder_mappings.json")
 MODEL_CACHE_PATH = os.path.join(_THIS_DIR, "_trained_model_cache.pkl")
- 
+
 # ---------------------------------------------------------------------------
 # Model settings
 # ---------------------------------------------------------------------------
@@ -34,30 +34,30 @@ XGB_PARAMS = dict(
     random_state=42,
     n_jobs=-1,
 )
- 
+
 # The model only learns from days up to this date. Everything after it (the
 # last 6 weeks of the data) is kept hidden, so a backtest that starts after
 # this date is a fair test on days the model has never seen. Set to None to
 # train on all the data (best for real forecasting, but then no backtest
 # window is fully out-of-sample).
 TRAIN_CUTOFF = "2015-06-18"
- 
+
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
 PROMO_DURATION_DEFAULT = 108          # median PromoDuration where Promo2 == 1
 COMPETITION_DURATION_DEFAULT = 61     # median CompetitionOpenDuration where > 0
- 
+
 # Used only when no store is chosen (generic mode). All-time chain averages.
 SEED_SALES = 6950.0
- 
+
 # When "Continuous campaign" is switched on for a store or a generic profile
 # that has no real Promo2 interval, this is the most common real interval, so
 # the model never sees Promo2 = 1 together with PromoInterval = "None"
 # (a combination that does not exist in the training data).
 DEFAULT_PROMO2_INTERVAL = "Jan,Apr,Jul,Oct"
 DEFAULT_ASSORTMENT = "a"
- 
+
 STATE_HOLIDAY_OPTIONS = {
     "None": "0",
     "Public Holiday": "a",
@@ -65,14 +65,14 @@ STATE_HOLIDAY_OPTIONS = {
     "Christmas": "c",
 }
 _STATE_HOLIDAY_RAW_TO_LABEL = {v: k for k, v in STATE_HOLIDAY_OPTIONS.items()}
- 
+
 STORE_TYPE_OPTIONS = ("a", "b", "c", "d")
- 
+
 # In the Rossmann data almost every store is closed on Sundays: 98.6% of Type A,
 # 100% of Type C and 99.4% of Type D Sunday-rows are closed. Only Type B stores
 # (98% open) trade on Sundays.
 SUNDAY_CLOSED_TYPES = ("a", "c", "d")
- 
+
 FEATURE_ORDER = [
     "DayOfWeek", "Open", "Promo", "StateHoliday", "SchoolHoliday", "StoreType",
     "Assortment", "Promo2", "PromoInterval", "Year", "Month", "Day",
@@ -80,14 +80,14 @@ FEATURE_ORDER = [
     "RollingMean_7", "RollingMean_30", "CompetitionOpenDuration",
     "PromoDuration", "CompetitionDistance_Log",
 ]
- 
- 
+
+
 # ---------------------------------------------------------------------------
 # Encoder mappings
 # ---------------------------------------------------------------------------
 _encoder_mappings = None
- 
- 
+
+
 def _load_encoder_mappings():
     global _encoder_mappings
     if _encoder_mappings is None:
@@ -99,8 +99,8 @@ def _load_encoder_mappings():
         with open(ENCODER_MAPPINGS_PATH, "r") as f:
             _encoder_mappings = json.load(f)
     return _encoder_mappings
- 
- 
+
+
 def _encode(column, raw_value):
     column_mapping = _load_encoder_mappings()[column]
     if raw_value not in column_mapping:
@@ -109,14 +109,14 @@ def _encode(column, raw_value):
             f"column {column!r}. Known values: {list(column_mapping.keys())}"
         )
     return int(column_mapping[raw_value])
- 
- 
+
+
 # ---------------------------------------------------------------------------
 # Store history (history.json)
 # ---------------------------------------------------------------------------
 _history = None
- 
- 
+
+
 def _load_history():
     global _history
     if _history is None:
@@ -145,13 +145,13 @@ def _load_history():
             "stores": stores,
         }
     return _history
- 
- 
+
+
 def get_data_range():
     h = _load_history()
     return h["first_date"], h["last_date"]
- 
- 
+
+
 def list_stores():
     """Light list for the store picker (no sales arrays)."""
     h = _load_history()
@@ -166,12 +166,12 @@ def list_stores():
         }
         for store_id, s in sorted(h["stores"].items())
     ]
- 
- 
+
+
 def store_exists(store_id):
     return store_id in _load_history()["stores"]
- 
- 
+
+
 # ---------------------------------------------------------------------------
 # Training / model cache
 # ---------------------------------------------------------------------------
@@ -184,15 +184,15 @@ def _train_model():
     df = pd.read_pickle(TRAINING_FRAME_PATH)
     if TRAIN_CUTOFF is not None:
         df = df[df["Date"] <= pd.Timestamp(TRAIN_CUTOFF)]
- 
+
     print(f"Training XGBoost on {len(df):,} rows "
           f"(up to {df['Date'].max().date()}) - this can take several minutes...")
     model = XGBRegressor(**XGB_PARAMS)
     model.fit(df[FEATURE_ORDER], df["Sales"])
     print("Training complete.")
     return model
- 
- 
+
+
 def _cache_is_fresh(cache):
     return (
         isinstance(cache, dict)
@@ -202,16 +202,16 @@ def _cache_is_fresh(cache):
         and os.path.exists(TRAINING_FRAME_PATH)
         and cache.get("built_at", 0) >= os.path.getmtime(TRAINING_FRAME_PATH)
     )
- 
- 
+
+
 _model = None
- 
- 
+
+
 def _get_model():
     global _model
     if _model is not None:
         return _model
- 
+
     if os.path.exists(MODEL_CACHE_PATH):
         try:
             with open(MODEL_CACHE_PATH, "rb") as f:
@@ -222,7 +222,7 @@ def _get_model():
             print(f"Loading cached model from {MODEL_CACHE_PATH}")
             _model = cache["model"]
             return _model
- 
+
     _model = _train_model()
     with open(MODEL_CACHE_PATH, "wb") as f:
         pickle.dump({
@@ -234,8 +234,8 @@ def _get_model():
         }, f)
     print(f"Saved trained model to {MODEL_CACHE_PATH}.")
     return _model
- 
- 
+
+
 # ---------------------------------------------------------------------------
 # Store profile: the fixed facts about the store being forecast
 # ---------------------------------------------------------------------------
@@ -265,8 +265,8 @@ def _make_profile(store_id, store_type, competition_distance):
         "closed_on_sunday": store_type in SUNDAY_CLOSED_TYPES,
         "real": False,
     }
- 
- 
+
+
 def _competition_duration(profile, d):
     if profile["competition_since"] is not None:
         year, month = profile["competition_since"]
@@ -275,8 +275,8 @@ def _competition_duration(profile, d):
         return max(0, (d.year - year) * 12 + (d.month - month))
     has_competition = profile["competition_distance"] is not None and profile["competition_distance"] > 0
     return COMPETITION_DURATION_DEFAULT if has_competition else 0
- 
- 
+
+
 def _promo_duration(profile, d, promo2):
     if promo2 != 1:
         return 0
@@ -284,8 +284,8 @@ def _promo_duration(profile, d, promo2):
         year, week = profile["promo2_since"]
         return max(0, (d.year - year) * 52 + (int(d.isocalendar().week) - week))
     return PROMO_DURATION_DEFAULT
- 
- 
+
+
 # ---------------------------------------------------------------------------
 # Feature vector and one-day prediction
 # ---------------------------------------------------------------------------
@@ -315,13 +315,13 @@ def _build_day_features(d, promo, promo2, state_holiday_raw, school_holiday,
         "PromoDuration": _promo_duration(profile, d, promo2),
         "CompetitionDistance_Log": float(np.log1p(profile["competition_distance"])),
     }
- 
- 
+
+
 def _predict_one_day(feature_dict):
     row = pd.DataFrame([feature_dict])[FEATURE_ORDER]
     return float(max(_get_model().predict(row)[0], 0.0))
- 
- 
+
+
 # ---------------------------------------------------------------------------
 # History seeding: the last 30 trading days before the forecast starts
 # ---------------------------------------------------------------------------
@@ -334,12 +334,12 @@ def _seed_from_store(store_id, start_date):
         return None
     open_sales = [v for v in sales[:end_idx] if v > 0]
     return _pad_seed(open_sales)
- 
- 
+
+
 def _seed_from_averages(avg_7, avg_30):
     """Build the 30-day seed from the user's average daily sales for the last
     7 days and the last 30 days. Either one may be missing.
- 
+
     The newest 7 slots get the 7-day average; the older 23 slots get the value
     that makes the whole 30-day mean equal the 30-day average.
     """
@@ -352,8 +352,8 @@ def _seed_from_averages(avg_7, avg_30):
     older = (30 * avg_30 - 7 * avg_7) / 23
     older = max(older, 0.25 * avg_30)  # a very high 7-day average must not push this to 0 or below
     return [float(older)] * 23 + [float(avg_7)] * 7
- 
- 
+
+
 def _pad_seed(open_sales):
     if not open_sales:
         return None
@@ -361,44 +361,52 @@ def _pad_seed(open_sales):
     if len(seed) < 30:  # short history: fill the oldest slots with what we have
         seed = [float(np.mean(seed))] * (30 - len(seed)) + seed
     return seed
- 
- 
+
+
 # ---------------------------------------------------------------------------
 # Recursive multi-day forecast (one track)
 # ---------------------------------------------------------------------------
 def _generate_track(start_date, num_days, profile, seed, promo_dates, promo2,
-                    state_holiday_label, school_holiday,
+                    state_dates, state_holiday_label, school_dates,
                     closed_dates=None, state_by_date=None, school_by_date=None,
                     promo_flags_by_date=None):
     """Forecast num_days, feeding each prediction into the next day's lags.
- 
-    closed_dates / state_by_date / school_by_date / promo_flags_by_date are used
-    to replay real conditions for a backtest; when they are None the single
-    dashboard values apply to every day.
+
+    promo_dates / state_dates / school_dates are the days (datetime.date) the
+    user marked; every other day has no promo / no state holiday / no school
+    holiday. state_holiday_label is the kind of state holiday for state_dates.
+
+    closed_dates / state_by_date / school_by_date / promo_flags_by_date replace
+    those choices with the real calendar, to replay a past period in a backtest.
     """
     history = list(seed) if seed is not None else [SEED_SALES] * 30
     results = []
- 
+
     for i in range(num_days):
         d = start_date + timedelta(days=i)
- 
+
         if closed_dates is not None:
             closed = d in closed_dates
         else:
             closed = profile["closed_on_sunday"] and d.isoweekday() == 7
- 
+
         if closed:
             results.append({"date": d.strftime("%Y-%m-%d"), "predicted_sales": 0.0, "closed": True})
             continue
- 
+
         if promo_flags_by_date is not None:
             promo = promo_flags_by_date.get(d, 0)
         else:
             promo = 1 if d in promo_dates else 0
-        state_raw = (state_by_date.get(d, "0") if state_by_date is not None
-                     else STATE_HOLIDAY_OPTIONS[state_holiday_label])
-        school = (school_by_date.get(d, 0) if school_by_date is not None else school_holiday)
- 
+        if state_by_date is not None:
+            state_raw = state_by_date.get(d, "0")
+        else:
+            state_raw = STATE_HOLIDAY_OPTIONS[state_holiday_label] if d in state_dates else "0"
+        if school_by_date is not None:
+            school = school_by_date.get(d, 0)
+        else:
+            school = 1 if d in school_dates else 0
+
         features = _build_day_features(
             d, promo, promo2, state_raw, school, profile,
             lag_7=history[-7], lag_14=history[-14], lag_30=history[-30],
@@ -406,13 +414,13 @@ def _generate_track(start_date, num_days, profile, seed, promo_dates, promo2,
         )
         predicted = _predict_one_day(features)
         results.append({"date": d.strftime("%Y-%m-%d"), "predicted_sales": round(predicted, 2), "closed": False})
- 
+
         history.append(predicted)
         history.pop(0)
- 
+
     return results
- 
- 
+
+
 # ---------------------------------------------------------------------------
 # Real conditions and accuracy metrics
 # ---------------------------------------------------------------------------
@@ -425,8 +433,8 @@ def _window_slice(store_id, start_date, num_days):
     if start_idx < 0 or end_idx > h["num_days"]:
         return None
     return start_idx, end_idx
- 
- 
+
+
 def _real_conditions(store_id, start_date, num_days):
     """Real promo / holiday / closed-day calendar for the window."""
     h = _load_history()
@@ -441,8 +449,8 @@ def _real_conditions(store_id, start_date, num_days):
         state[d] = s["state_holiday"][idx]
         school[d] = int(s["school"][idx])
     return closed, promo, state, school
- 
- 
+
+
 def _actual_series(store_id, start_date, num_days):
     """Actual daily sales inside the data for the window (None for closed)."""
     h = _load_history()
@@ -455,8 +463,8 @@ def _actual_series(store_id, start_date, num_days):
             out.append({"date": d.strftime("%Y-%m-%d"),
                         "sales": float(sales[idx]) if sales[idx] > 0 else None})
     return out
- 
- 
+
+
 def _seasonal_naive(store_id, start_date, num_days):
     """Naive forecast: repeat the last observed week (same weekday)."""
     h = _load_history()
@@ -467,8 +475,8 @@ def _seasonal_naive(store_id, start_date, num_days):
         src = start_idx - 7 + (i % 7)
         out.append(float(sales[src]) if 0 <= src < h["num_days"] and sales[src] > 0 else None)
     return out
- 
- 
+
+
 def _compute_metrics(predicted, actual, naive):
     """MAPE / MAE / RMSE / total error over days that are open in both."""
     p, a, n = [], [], []
@@ -495,8 +503,8 @@ def _compute_metrics(predicted, actual, naive):
         metrics["naive_mape"] = round(float(np.mean(np.abs(aa - nn) / aa) * 100), 2)
         metrics["naive_mae"] = round(float(np.mean(np.abs(aa - nn))), 1)
     return metrics
- 
- 
+
+
 # ---------------------------------------------------------------------------
 # Public API - called by app.py
 # ---------------------------------------------------------------------------
@@ -505,7 +513,8 @@ def generate_forecast(
     promo_dates,
     promo2,
     state_holiday_label,
-    school_holiday,
+    state_holiday_dates,
+    school_holiday_dates,
     competition_distance,
     store_type,
     start_date=None,
@@ -516,7 +525,7 @@ def generate_forecast(
 ):
     """Return scenario + baseline tracks, summary and (for a chosen store) the
     real history, the actual sales for the window and accuracy metrics.
- 
+
     store_id        - Rossmann store 1-1115: real history, real store facts
     recent_avg_7    - average daily sales of the last 7 days (no store_id)
     recent_avg_30   - average daily sales of the last 30 days (no store_id)
@@ -527,9 +536,11 @@ def generate_forecast(
     if start_date is None:
         start_date = (datetime.now() + timedelta(days=1)).date()
     promo_dates = set(promo_dates or [])
- 
+    state_holiday_dates = set(state_holiday_dates or [])
+    school_holiday_dates = set(school_holiday_dates or [])
+
     profile = _make_profile(store_id, store_type, competition_distance)
- 
+
     seed, seed_source = None, "chain average (no history)"
     if store_id is not None:
         seed = _seed_from_store(store_id, start_date)
@@ -539,25 +550,25 @@ def generate_forecast(
         seed = _seed_from_averages(recent_avg_7, recent_avg_30)
         if seed is not None:
             seed_source = "your recent average sales"
- 
+
     replay_used = bool(replay_actual and store_id is not None
                        and _window_slice(store_id, start_date, forecast_period_days) is not None)
- 
+
     if replay_used:
         closed, promo_flags, state_map, school_map = _real_conditions(store_id, start_date, forecast_period_days)
         scenario = _generate_track(
             start_date, forecast_period_days, profile, seed, set(), promo2,
-            "None", 0, closed_dates=closed, state_by_date=state_map,
+            set(), "None", set(), closed_dates=closed, state_by_date=state_map,
             school_by_date=school_map, promo_flags_by_date=promo_flags)
     else:
         scenario = _generate_track(
             start_date, forecast_period_days, profile, seed, promo_dates, promo2,
-            state_holiday_label, school_holiday)
- 
+            state_holiday_dates, state_holiday_label, school_holiday_dates)
+
     # Baseline: normal conditions (no promo, no campaign, no holiday)
     baseline = _generate_track(
-        start_date, forecast_period_days, profile, seed, set(), 0, "None", 0)
- 
+        start_date, forecast_period_days, profile, seed, set(), 0, set(), "None", set())
+
     scenario_sales = [d["predicted_sales"] for d in scenario]
     total = round(sum(scenario_sales), 2)
     open_days = sum(1 for d in scenario if not d["closed"])
@@ -569,7 +580,7 @@ def generate_forecast(
         "peak_day": f"Day {peak_index + 1}",
         "peak_day_date": scenario[peak_index]["date"],
     }
- 
+
     result = {
         "scenario": scenario,
         "baseline": baseline,
@@ -582,7 +593,7 @@ def generate_forecast(
         "store": None,
         "averages": None,
     }
- 
+
     if store_id is not None:
         h = _load_history()
         s = h["stores"][store_id]
@@ -610,13 +621,13 @@ def generate_forecast(
     elif seed is not None:
         # Echo the user's own numbers so the chart can draw them
         result["averages"] = {"avg_7": recent_avg_7, "avg_30": recent_avg_30}
- 
+
     cutoff = date.fromisoformat(TRAIN_CUTOFF) if TRAIN_CUTOFF else None
     result["train_cutoff"] = TRAIN_CUTOFF
     result["overlaps_training"] = bool(cutoff and start_date <= cutoff)
     return result
- 
- 
+
+
 def warm_up():
     _get_model()
     try:

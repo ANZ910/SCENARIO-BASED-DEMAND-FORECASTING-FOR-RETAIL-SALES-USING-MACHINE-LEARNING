@@ -19,9 +19,6 @@ const distanceSlider = document.getElementById("competition-distance");
 const distanceValue  = document.getElementById("distance-value");
 const button         = document.getElementById("forecast-button");
 const errorMessage   = document.getElementById("error-message");
-const promoDaysBlock = document.getElementById("promo-days");
-const calendarEl     = document.getElementById("promo-calendar");
-const promoCountEl   = document.getElementById("promo-count");
 
 // Sales history inputs
 const storeSelect    = document.getElementById("store-select");
@@ -70,18 +67,19 @@ function refreshLocks() {
   setLocked(schoolBox, replay);
   setLocked(storeTypeSelect, currentStore !== null);
   setLocked(distanceSlider, currentStore !== null);
-  promoDaysBlock.hidden = replay || !promoBox.checked;
+  // A day picker only shows while its switch is on (and not while replaying real days)
+  promoPicker.block.hidden  = replay || !promoBox.checked;
+  statePicker.block.hidden  = replay || holidaySelect.value === "None";
+  schoolPicker.block.hidden = replay || !schoolBox.checked;
 }
 
 
-// ---------- Promo days calendar ----------
+// ---------- Day pickers: promo days, state holiday days, school holiday days ----------
+// Each picker is a small calendar of the forecast window. Click a date to mark it.
 
 const WEEKDAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
                      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
-// The dates (as "YYYY-MM-DD") the user has ticked for promo
-const selectedPromoDates = new Set();
 
 // Date -> "YYYY-MM-DD" using local date parts (toISOString would shift the day by time zone)
 function toISO(date) {
@@ -123,144 +121,169 @@ function getForecastDates() {
   return dates;
 }
 
-// Closed days (Sundays for most stores): promo has no effect there
+// Closed days (Sundays for most stores): nothing happens there, so they cannot be marked
 function isClosed(date) {
   return closedOnSunday() && weekdayIndex(date) === 6;
 }
 
-// How many open days there are, and how many of them have promo
-function promoStats() {
-  const dates = getForecastDates();
-  const openDates = dates.filter(d => !isClosed(d));
-  const picked = openDates.filter(d => selectedPromoDates.has(toISO(d))).length;
-  return { total: dates.length, open: openDates.length, picked: picked };
-}
+// Build one picker for the block with this id. `meaning` completes the sentence
+// "3 of 20 open days <meaning>".
+function createDayPicker(blockId, meaning) {
+  const block = document.getElementById(blockId);
+  const calendar = block.querySelector(".calendar");
+  const countEl = block.querySelector(".promo-count");
+  const selected = new Set();        // the marked dates, as "YYYY-MM-DD"
 
-function updatePromoCount() {
-  const stats = promoStats();
-  if (stats.total === 0) {
-    promoCountEl.textContent = "Choose a start date to pick promo days.";
-    return;
+  // How many open days there are in the window, and how many of them are marked
+  function stats() {
+    const dates = getForecastDates();
+    const openDates = dates.filter(d => !isClosed(d));
+    const picked = openDates.filter(d => selected.has(toISO(d))).length;
+    return { total: dates.length, open: openDates.length, picked: picked };
   }
-  let text = `${stats.picked} of ${stats.open} open days with promo`;
-  if (stats.open < stats.total) {
-    text += " (closed on Sundays)";
+
+  function updateCount() {
+    const st = stats();
+    if (st.total === 0) {
+      countEl.textContent = "Choose a start date to pick days.";
+      return;
+    }
+    let text = `${st.picked} of ${st.open} open days ${meaning}`;
+    if (st.open < st.total) text += " (closed on Sundays)";
+    countEl.textContent = text;
   }
-  promoCountEl.textContent = text;
-}
 
-// Drop ticked dates that are no longer inside the forecast window
-function pruneSelection() {
-  const valid = new Set(getForecastDates().map(toISO));
-  [...selectedPromoDates].forEach(iso => {
-    if (!valid.has(iso)) selectedPromoDates.delete(iso);
-  });
-}
-
-// Draw the calendar: Mon-Sun header, blank cells before the first date, then one button per date
-function renderCalendar() {
-  calendarEl.replaceChildren();
-
-  const dates = getForecastDates();
-  if (dates.length > 0) {
-    WEEKDAY_NAMES.forEach(name => {
-      const head = document.createElement("div");
-      head.className = "calendar-head";
-      head.textContent = name;
-      calendarEl.appendChild(head);
+  // Drop marked dates that are no longer inside the forecast window
+  function prune() {
+    const valid = new Set(getForecastDates().map(toISO));
+    [...selected].forEach(iso => {
+      if (!valid.has(iso)) selected.delete(iso);
     });
+  }
 
-    for (let i = 0; i < weekdayIndex(dates[0]); i++) {
-      calendarEl.appendChild(document.createElement("div"));
+  // Draw the calendar: Mon-Sun header, blank cells before the first date, then one button per date
+  function render() {
+    calendar.replaceChildren();
+
+    const dates = getForecastDates();
+    if (dates.length > 0) {
+      WEEKDAY_NAMES.forEach(name => {
+        const head = document.createElement("div");
+        head.className = "calendar-head";
+        head.textContent = name;
+        calendar.appendChild(head);
+      });
+
+      for (let i = 0; i < weekdayIndex(dates[0]); i++) {
+        calendar.appendChild(document.createElement("div"));
+      }
+
+      dates.forEach((date, i) => {
+        const iso = toISO(date);
+        const cell = document.createElement("button");
+        cell.type = "button";
+        cell.className = "day-cell";
+        cell.dataset.date = iso;
+
+        const num = document.createElement("span");
+        num.className = "day-num";
+        num.textContent = date.getDate();
+        cell.appendChild(num);
+
+        // Show the month on the first cell and on the 1st of each month
+        if (i === 0 || date.getDate() === 1) {
+          const month = document.createElement("span");
+          month.className = "day-month";
+          month.textContent = MONTH_NAMES[date.getMonth()];
+          cell.appendChild(month);
+        }
+
+        if (isClosed(date)) {
+          cell.classList.add("closed");
+          cell.setAttribute("aria-disabled", "true");
+          cell.title = "Closed on Sundays";
+        } else {
+          const on = selected.has(iso);
+          cell.classList.toggle("selected", on);
+          cell.setAttribute("aria-pressed", String(on));
+        }
+
+        calendar.appendChild(cell);
+      });
     }
 
-    dates.forEach((date, i) => {
-      const iso = toISO(date);
-      const cell = document.createElement("button");
-      cell.type = "button";
-      cell.className = "day-cell";
-      cell.dataset.date = iso;
-
-      const num = document.createElement("span");
-      num.className = "day-num";
-      num.textContent = date.getDate();
-      cell.appendChild(num);
-
-      // Show the month on the first cell and on the 1st of each month
-      if (i === 0 || date.getDate() === 1) {
-        const month = document.createElement("span");
-        month.className = "day-month";
-        month.textContent = MONTH_NAMES[date.getMonth()];
-        cell.appendChild(month);
-      }
-
-      if (isClosed(date)) {
-        cell.classList.add("closed");
-        cell.setAttribute("aria-disabled", "true");
-        cell.title = "Closed on Sundays";
-      } else {
-        const on = selectedPromoDates.has(iso);
-        cell.classList.toggle("selected", on);
-        cell.setAttribute("aria-pressed", String(on));
-      }
-
-      calendarEl.appendChild(cell);
-    });
+    updateCount();
   }
 
-  updatePromoCount();
-}
+  // Mark or unmark one date (only that cell is updated, so keyboard focus stays on it)
+  calendar.addEventListener("click", event => {
+    const cell = event.target.closest(".day-cell");
+    if (!cell || cell.classList.contains("closed")) return;
 
-// Tick or untick one date (only that cell is updated, so keyboard focus stays on it)
-calendarEl.addEventListener("click", event => {
-  const cell = event.target.closest(".day-cell");
-  if (!cell || cell.classList.contains("closed")) return;
+    const iso = cell.dataset.date;
+    const on = !selected.has(iso);
+    if (on) selected.add(iso); else selected.delete(iso);
 
-  const iso = cell.dataset.date;
-  const on = !selectedPromoDates.has(iso);
-  if (on) selectedPromoDates.add(iso); else selectedPromoDates.delete(iso);
+    cell.classList.toggle("selected", on);
+    cell.setAttribute("aria-pressed", String(on));
+    updateCount();
+  });
 
-  cell.classList.toggle("selected", on);
-  cell.setAttribute("aria-pressed", String(on));
-  updatePromoCount();
-});
+  // Presets replace the current marks. Closed days are skipped.
+  function applyPreset(name) {
+    selected.clear();
 
-// Presets replace the current selection. Closed days are skipped.
-function applyPreset(name) {
-  selectedPromoDates.clear();
+    if (name !== "clear") {
+      let firstOpenDone = false;
+      getForecastDates().forEach((date, i) => {
+        if (isClosed(date)) return;
+        const weekday = weekdayIndex(date);
+        const on =
+          name === "every" ||
+          (name === "weekdays" && weekday < 5) ||
+          (name === "weekends" && weekday >= 5) ||
+          (name === "first-week" && i < 7) ||
+          (name === "first-day" && !firstOpenDone);
+        firstOpenDone = true;
+        if (on) selected.add(toISO(date));
+      });
+    }
 
-  if (name !== "clear") {
-    getForecastDates().forEach((date, i) => {
-      if (isClosed(date)) return;
-      const weekday = weekdayIndex(date);
-      const on =
-        name === "every" ||
-        (name === "weekdays" && weekday < 5) ||
-        (name === "weekends" && weekday >= 5) ||
-        (name === "first-week" && i < 7);
-      if (on) selectedPromoDates.add(toISO(date));
-    });
+    render();
   }
 
-  renderCalendar();
+  block.querySelectorAll("[data-preset]").forEach(btn => {
+    btn.addEventListener("click", () => applyPreset(btn.dataset.preset));
+  });
+
+  return { block, selected, stats, prune, render, applyPreset };
 }
 
-document.querySelectorAll("[data-preset]").forEach(btn => {
-  btn.addEventListener("click", () => applyPreset(btn.dataset.preset));
-});
+const promoPicker  = createDayPicker("promo-days", "with promo");
+const statePicker  = createDayPicker("state-days", "marked as a state holiday");
+const schoolPicker = createDayPicker("school-days", "marked as a school holiday");
+const allPickers   = [promoPicker, statePicker, schoolPicker];
 
-// The calendar only shows while Promo is ON; start with Weekdays so it is never empty
+function renderAllPickers() { allPickers.forEach(p => p.render()); }
+
+// A switch turned on starts with a sensible default selection, so it is never empty
 promoBox.addEventListener("change", () => {
-  promoDaysBlock.hidden = replayActive() || !promoBox.checked;
-  if (promoBox.checked && selectedPromoDates.size === 0) {
-    applyPreset("weekdays");
-  }
+  refreshLocks();
+  if (promoBox.checked && promoPicker.selected.size === 0) promoPicker.applyPreset("weekdays");
+});
+holidaySelect.addEventListener("change", () => {
+  refreshLocks();
+  if (holidaySelect.value !== "None" && statePicker.selected.size === 0) statePicker.applyPreset("first-day");
+});
+schoolBox.addEventListener("change", () => {
+  refreshLocks();
+  if (schoolBox.checked && schoolPicker.selected.size === 0) schoolPicker.applyPreset("every");
 });
 
 // A new period or start date moves the window; a new store type changes which days are closed
 function onWindowChange() {
-  pruneSelection();
-  renderCalendar();
+  allPickers.forEach(p => p.prune());
+  renderAllPickers();
 }
 // With a store and replay on, keep the window inside the data so it can be checked
 periodSelect.addEventListener("change", () => {
@@ -268,10 +291,13 @@ periodSelect.addEventListener("change", () => {
   onWindowChange();
 });
 startDateInput.addEventListener("change", onWindowChange);
-storeTypeSelect.addEventListener("change", renderCalendar);
+storeTypeSelect.addEventListener("change", renderAllPickers);
 
 
 // ---------- Store picker and sales upload ----------
+
+// Rossmann's assortment levels, in words (a = basic, b = extra, c = extended)
+const ASSORTMENT_NAMES = { a: "basic", b: "extra", c: "extended" };
 
 function formatMetres(value) {
   return Math.round(value).toLocaleString("en-US");
@@ -301,7 +327,7 @@ function chooseStore(storeId) {
     const sunday = currentStore.closed_on_sunday ? "closed on Sundays" : "open on Sundays";
     storeInfoEl.textContent =
       `Store ${currentStore.id}: Type ${currentStore.store_type.toUpperCase()}, ` +
-      `assortment ${currentStore.assortment}, nearest competitor ` +
+      `${ASSORTMENT_NAMES[currentStore.assortment] || currentStore.assortment} assortment, nearest competitor ` +
       `${formatMetres(currentStore.competition_distance)} m, ` +
       `${currentStore.promo2 ? "runs a continuous campaign" : "no continuous campaign"}, ${sunday}. ` +
       `Sales data runs ${dataRange.first} to ${dataRange.last}.`;
@@ -314,9 +340,9 @@ function chooseStore(storeId) {
 
   replayRow.hidden = currentStore === null;
   averageField.hidden = currentStore !== null;
-  pruneSelection();
+  allPickers.forEach(p => p.prune());
   refreshLocks();
-  renderCalendar();
+  renderAllPickers();
 }
 
 storeSelect.addEventListener("change", () => {
@@ -370,10 +396,11 @@ function getInputs() {
   const inputs = {
     forecast_period_days: Number(periodSelect.value),
     start_date: startDateInput.value,
-    promo_dates: (promoBox.checked && !replay) ? [...selectedPromoDates].sort() : [],
+    promo_dates: (promoBox.checked && !replay) ? [...promoPicker.selected].sort() : [],
     promo2: promo2Box.checked ? 1 : 0,
     state_holiday_label: replay ? "None" : holidaySelect.value,
-    school_holiday: (schoolBox.checked && !replay) ? 1 : 0,
+    state_holiday_dates: (!replay && holidaySelect.value !== "None") ? [...statePicker.selected].sort() : [],
+    school_holiday_dates: (!replay && schoolBox.checked) ? [...schoolPicker.selected].sort() : [],
     competition_distance: Number(distanceSlider.value),
     store_type: storeTypeSelect.value,
     replay_actual: replay
@@ -690,16 +717,34 @@ function showAccuracy(result) {
   accuracyCards.hidden = true;
   accuracyNote.hidden = true;
 
-  if (!currentStore) return;
+  if (!currentStore) {
+    // No store and no typed averages: the forecast starts from a chain-wide average
+    if (!result.averages) {
+      accuracyBadge.hidden = false;
+      accuracyBadge.className = "badge warn";
+      accuracyBadge.textContent =
+        "No sales history was given, so the forecast starts from a chain-wide average. In testing this gave " +
+        "roughly 30% error, against roughly 10% when a store's own sales are used. " +
+        "Choose a store or type your recent average sales for a more reliable forecast.";
+    }
+    return;
+  }
 
   if (!m) {
     // A store is chosen but this window cannot be scored
-    accuracyNote.hidden = false;
     const gap = dataRange && result.scenario[0].date > dataRange.last;
-    accuracyNote.textContent = gap
-      ? `The sales data ends on ${dataRange.last}, so there are no actual sales to compare with for this period. ` +
-        `The forecast starts from the store's last known sales.`
-      : "Your scenario is shown against the real sales, but it is not scored because your promo and holiday choices may differ from what really happened. Switch on 'Test accuracy' to score the model.";
+    if (gap) {
+      const days = Math.round((parseISO(result.scenario[0].date) - parseISO(dataRange.last)) / 86400000);
+      accuracyBadge.hidden = false;
+      accuracyBadge.className = "badge warn";
+      accuracyBadge.textContent =
+        `This forecast starts ${days.toLocaleString("en-US")} days after the last sales data (${dataRange.last}). ` +
+        `It continues from the store's last known sales and from patterns learned up to ${result.train_cutoff || dataRange.last}, ` +
+        `so treat it as a rough what-if, not a validated forecast. There are no actual sales to compare with.`;
+      return;
+    }
+    accuracyNote.hidden = false;
+    accuracyNote.textContent = "Your scenario is shown against the real sales, but it is not scored because your promo and holiday choices may differ from what really happened. Switch on 'Test accuracy' to score the model.";
     return;
   }
 
@@ -734,9 +779,8 @@ function showAccuracy(result) {
 async function runForecast() {
   errorMessage.textContent = "";
 
-  // Check the promo days before sending anything
-  const stats = promoStats();
-  if (stats.total === 0) {
+  // Check the marked days before sending anything
+  if (promoPicker.stats().total === 0) {
     errorMessage.textContent = "Choose a start date.";
     return;
   }
@@ -748,9 +792,19 @@ async function runForecast() {
       }
     }
   }
-  if (promoBox.checked && !replayActive() && stats.picked === 0) {
-    errorMessage.textContent = "Pick at least one open promo day, or switch Promo off.";
-    return;
+  if (!replayActive()) {
+    if (promoBox.checked && promoPicker.stats().picked === 0) {
+      errorMessage.textContent = "Pick at least one open promo day, or switch Promo off.";
+      return;
+    }
+    if (holidaySelect.value !== "None" && statePicker.stats().picked === 0) {
+      errorMessage.textContent = "Pick at least one holiday day, or set State Holiday to None.";
+      return;
+    }
+    if (schoolBox.checked && schoolPicker.stats().picked === 0) {
+      errorMessage.textContent = "Pick at least one school holiday day, or switch School Holiday off.";
+      return;
+    }
   }
 
   button.disabled = true;
@@ -863,9 +917,9 @@ button.addEventListener("click", runForecast);
 // ---------- Start-up ----------
 setDefaultStartDate();
 refreshLocks();
-if (promoBox.checked) {
-  applyPreset("weekdays");   // the browser can restore a ticked Promo box on reload
-} else {
-  renderCalendar();
-}
+// The browser can restore ticked switches on reload, so give them their default days
+if (promoBox.checked) promoPicker.applyPreset("weekdays");
+if (holidaySelect.value !== "None") statePicker.applyPreset("first-day");
+if (schoolBox.checked) schoolPicker.applyPreset("every");
+renderAllPickers();
 loadStores();
